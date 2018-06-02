@@ -1,4 +1,4 @@
-name, school, position
+id, name, school, position, drafted
 Coznesster Smiff , Rutgers University
 Elipses Corter , University of Alabama
 Nyquillus Dillwad , LSU
