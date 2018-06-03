@@ -1,0 +1,33 @@
+id, name, school, position, drafted
+1, Coznesster Smiff , Rutgers University, QB, false
+2, Elipses Corter , University of Alabama, OL, false
+3, Nyquillus Dillwad , LSU, LB, false
+4, Bismo Funyuns , Florida State University, DB, false
+5, Decatholac Mango , Georgia Tech University, OL, false
+6, Mergatroid Skittle , University of Louisville, TE, false
+7, Quiznatodd Bidness , University of Tennessee, WR, false
+8, D'Pez Poopsie , Ole Miss, DL, false
+9, Quackadilly Blip , Auburn University, LB, false
+10, Goolius Boozler , The U, K, false
+11, Bisquiteen Trisket , University of Michigan, RB, false
+12, Fartrell Cluggins , Arkansas University, OL, false
+13, Blyrone Blashinton , Syracuse University, DL, false
+14, Cartoons Plural , Virginia Tech University, QB, false
+15, Jammie Jammie-Jammie , The Ohio State University, DB, false
+16, Fudge , N/A, WR, false
+17, Equine Ducklings , Indiana University Purdue University Indianapolis, P, false
+18, Dahistorius Lamystorius , Utah State University, RB, false
+19, Ewokoniad Sigourneth JuniorStein , Oklahoma State University, OL, false
+20, Eqqsnuizitine Buble-Schwinslow , University of Nebraska, WR, false
+21, Huka'lakanaka Hakanakaheekalucka'hukahakafaka , University of Hawaii, LB, false
+22, King Prince Chambermaid , Baylor University, DL, false
+23, Ladennifer Jadaniston , University of Colorado, DB, false
+24, Ladadadaladadadadada Dala-Dadaladaladalada , University of Arizona, DB, false
+25, Harvard University , DeVry University, DL, false
+26, Morse Code , Army Navay Surplus Store, QB, false
+27, Wingdings , Online Classes, LB, false
+28, Firstname Lastname , College University, DL, false
+29, God , Home schooled, RB, false
+30, Squeeeeeeeeeeps , Santa Monica College, RB, false
+31, Benedict Cumberbatch , Oxford University, OL, false
+32, A.A. Ron Balakay , Morehouse College, WR, false
