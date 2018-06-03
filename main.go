@@ -27,12 +27,12 @@ const (
 
 // Player : struct for players
 type Player struct {
-	id       int64
-	name     string
-	school   string
-	position string
-	year     Year
-	drafted  bool
+	ID       int64
+	Name     string
+	School   string
+	Position string
+	Year     Year
+	Drafted  bool
 }
 
 var players []Player
@@ -52,17 +52,12 @@ func main() {
 	csvFile, e := os.Open("files/players.csv")
 	if e != nil {
 		log.Fatal(e)
-		return
 	}
 
 	defer csvFile.Close()
 	fmt.Println("csvFile: ", csvFile)
 
 	r := csv.NewReader(csvFile)
-	// lines, err := r.ReadAll()
-	// if err != nil {
-	// 	log.Fatalf("error reading all lines: %v", err)
-	// }
 
 	for {
 		line, error := r.Read()
@@ -81,12 +76,12 @@ func main() {
 		}
 
 		player := Player{
-			id:       Line00,
-			name:     line[1],
-			school:   line[2],
-			position: line[3],
-			year:     Line04,
-			drafted:  Line05,
+			ID:       Line00,
+			Name:     line[1],
+			School:   line[2],
+			Position: line[3],
+			Year:     Line04,
+			Drafted:  Line05,
 		}
 		// fmt.Println("player: ", "", " ", player)
 		allPlayers = append(allPlayers, player)
@@ -131,9 +126,26 @@ func player(w http.ResponseWriter, req *http.Request) {
 		log.Fatal("You can only get info for one player at a time")
 	}
 
+	// FIXME: IDs are off by one
+	if playerID > 32 {
+		msg := "PlayerIDs are between 1 and 32 (inclusive)"
+		respondWithError(w, http.StatusNotFound, msg)
+		return
+	}
+
 	foundPlayer := allPlayers[playerID]
 	fmt.Println("foundPlayer: ", foundPlayer)
-
+	jsonFoundPlayer, err := json.Marshal(foundPlayer)
+	if err != nil {
+		msg := "Could not find player with id " + strconv.Itoa(int(playerID))
+		fmt.Print(msg)
+		respondWithError(w, http.StatusNotFound, msg)
+		log.Fatal("Could not marshal json from the found player: ", err)
+	}
+	// fmt.Println("jsonFoundPlayer: ", jsonFoundPlayer)
+	fmt.Printf("%+v\n", jsonFoundPlayer)
+	// w.Write(jsonFoundPlayer)
+	respondWithJSON(w, http.StatusOK, foundPlayer)
 }
 
 func createPlayerDB(fileName string) ([]Player, error) {
