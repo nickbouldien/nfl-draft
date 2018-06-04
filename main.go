@@ -17,6 +17,10 @@ import (
 // Year : enumerating college class
 type Year int
 
+// ID : id (index) for the player
+// type ID int64
+
+// TODO: change this. should be a map from year(int) to class(string)
 const (
 	none           Year = 0
 	sophomore      Year = 2
@@ -38,7 +42,7 @@ type Player struct {
 var players []Player
 var allPlayers []Player
 
-var draftedPlayers []Player
+var draftedPlayers []int64
 
 func main() {
 	err := godotenv.Load()
@@ -97,7 +101,6 @@ func main() {
 }
 
 func index(w http.ResponseWriter, req *http.Request) {
-	// io.WriteString(w, "hola, mundo!")
 	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
 }
 
@@ -107,14 +110,41 @@ func test(w http.ResponseWriter, req *http.Request) {
 
 func player(w http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodPost {
-		fmt.Println("trying to draft")
+		err := req.ParseForm()
+		if err != nil {
+			panic(err)
+		}
+
 		id := req.FormValue("id")
-		fmt.Print("id: ", id)
+		fmt.Println("trying to draft player: ", id)
+
+		playerID, _ := strconv.ParseInt(id, 10, 64)
+
+		if playerID > 32 { // obviously this is only used since I'm not using real IDs (hashes), just indexes
+			msg := "PlayerIDs are between 1 and 32 (inclusive)"
+			respondWithError(w, http.StatusNotFound, msg)
+			return
+		}
+		foundPlayer := allPlayers[playerID]
+
+		hasBeenDrafted := foundPlayer.Drafted
+		if hasBeenDrafted {
+			msg := "player has already been drafted. pick another player"
+			respondWithError(w, http.StatusNotFound, msg)
+			return
+		}
+
+		foundPlayer.Drafted = true
+		draftedPlayers = append(draftedPlayers, playerID)
+		msg := "Congrats, you have successfully drafted player: " + id
+		respondWithJSON(w, http.StatusOK, msg)
+		return
 	}
-	fmt.Println("GET - player")
 	path := req.URL.Path
 	parts := strings.Split(path, "/")
 	id := parts[2]
+	fmt.Println("GET - player: ", id)
+
 	playerID, _ := strconv.ParseInt(id, 10, 64)
 
 	fmt.Println("path: ", path)
@@ -127,25 +157,27 @@ func player(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// FIXME: IDs are off by one
-	if playerID > 32 {
+	if playerID > 32 { // obviously this is only used since I'm not using real IDs (hashes), just indexes
 		msg := "PlayerIDs are between 1 and 32 (inclusive)"
 		respondWithError(w, http.StatusNotFound, msg)
 		return
 	}
 
+	// TODO: error handling for not finding player ??
 	foundPlayer := allPlayers[playerID]
 	fmt.Println("foundPlayer: ", foundPlayer)
-	jsonFoundPlayer, err := json.Marshal(foundPlayer)
-	if err != nil {
-		msg := "Could not find player with id " + strconv.Itoa(int(playerID))
-		fmt.Print(msg)
-		respondWithError(w, http.StatusNotFound, msg)
-		log.Fatal("Could not marshal json from the found player: ", err)
-	}
+	// jsonFoundPlayer, err := json.Marshal(foundPlayer)
+	// if err != nil {
+	// 	msg := "Could not find player with id " + strconv.Itoa(int(playerID))
+	// 	fmt.Print(msg)
+	// 	respondWithError(w, http.StatusNotFound, msg)
+	// 	log.Fatal("Could not marshal json from the found player: ", err)
+	// }
 	// fmt.Println("jsonFoundPlayer: ", jsonFoundPlayer)
-	fmt.Printf("%+v\n", jsonFoundPlayer)
+	// fmt.Printf("%+v\n", jsonFoundPlayer)
 	// w.Write(jsonFoundPlayer)
 	respondWithJSON(w, http.StatusOK, foundPlayer)
+	return // is this needed nb???
 }
 
 func createPlayerDB(fileName string) ([]Player, error) {
