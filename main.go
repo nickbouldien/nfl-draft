@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -106,6 +107,29 @@ func index(w http.ResponseWriter, req *http.Request) {
 
 func test(w http.ResponseWriter, req *http.Request) {
 	respondWithJSON(w, http.StatusOK, map[string]string{"test": "success"})
+}
+
+func storeDraftedPlayer(id string) {
+	file, err := os.Create("drafted_players")
+	if err != nil {
+		log.Fatal("Error creating 'drafted_players file': ", err)
+	}
+	defer file.Close()
+	file.WriteString(id)
+}
+
+func loadDraftedPlayers() []string {
+	file, err := os.Open("drafted_players")
+	if err != nil {
+		log.Fatal("Error loading 'drafted_players' file: ", err)
+	}
+
+	var draftedPlayerIDs []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		draftedPlayerIDs = append(draftedPlayerIDs, scanner.Text())
+	}
+	return draftedPlayerIDs
 }
 
 func player(w http.ResponseWriter, req *http.Request) {
