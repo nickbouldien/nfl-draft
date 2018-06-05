@@ -127,7 +127,10 @@ func player(w http.ResponseWriter, req *http.Request) {
 		}
 		foundPlayer := allPlayers[playerID]
 
+		fmt.Println("foundPlayer: ", foundPlayer)
+
 		hasBeenDrafted := foundPlayer.Drafted
+		fmt.Println("hasBeenDrafted: ", hasBeenDrafted)
 		if hasBeenDrafted {
 			msg := "player has already been drafted. pick another player"
 			respondWithError(w, http.StatusNotFound, msg)
@@ -135,7 +138,13 @@ func player(w http.ResponseWriter, req *http.Request) {
 		}
 
 		foundPlayer.Drafted = true
+		// TODO: persist this (write to csv??) so that player can't be drafted again
+
+		fmt.Println("foundPlayer: ", foundPlayer)
+
 		draftedPlayers = append(draftedPlayers, playerID)
+		fmt.Println("new draftedPlayers: ", draftedPlayers)
+
 		msg := "Congrats, you have successfully drafted player: " + id
 		respondWithJSON(w, http.StatusOK, msg)
 		return
@@ -166,16 +175,7 @@ func player(w http.ResponseWriter, req *http.Request) {
 	// TODO: error handling for not finding player ??
 	foundPlayer := allPlayers[playerID]
 	fmt.Println("foundPlayer: ", foundPlayer)
-	// jsonFoundPlayer, err := json.Marshal(foundPlayer)
-	// if err != nil {
-	// 	msg := "Could not find player with id " + strconv.Itoa(int(playerID))
-	// 	fmt.Print(msg)
-	// 	respondWithError(w, http.StatusNotFound, msg)
-	// 	log.Fatal("Could not marshal json from the found player: ", err)
-	// }
-	// fmt.Println("jsonFoundPlayer: ", jsonFoundPlayer)
-	// fmt.Printf("%+v\n", jsonFoundPlayer)
-	// w.Write(jsonFoundPlayer)
+
 	respondWithJSON(w, http.StatusOK, foundPlayer)
 	return // is this needed nb???
 }

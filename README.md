@@ -20,6 +20,7 @@ curl --request POST --url <base_url>/player/ --header 'content-type: application
 
 ex: curl --request POST --url http://localhost:8080/player/ --header 'content-type: application/x-www-form-urlencoded' --data id=3
 
+or: curl -X POST --url http://localhost:8080/player/ -H 'content-type: application/x-www-form-urlencoded' -d id=3
 
 ## Recourses:
 - ["Go in Practice"](https://www.manning.com/books/go-in-practice) by Matt Butcher and Matt Farina
