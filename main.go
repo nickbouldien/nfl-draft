@@ -9,8 +9,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -88,15 +88,18 @@ func main() {
 			Year:     Line04,
 			Drafted:  Line05,
 		}
-		// fmt.Println("player: ", "", " ", player)
 		allPlayers = append(allPlayers, player)
 	}
 
 	println("allPlayers: ", allPlayers)
 
+	fs := http.StripPrefix("/files", http.FileServer(http.Dir("./files")))
+	http.Handle("/files/", fs)
+
 	http.HandleFunc("/", index)
 	http.HandleFunc("/test", test)
-	http.HandleFunc("/player/", player)
+	http.HandleFunc("/players/", player) // TODO: add param for non-drafted players
+	// http.HandleFunc("/scouting", scouting)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
@@ -133,6 +136,11 @@ func loadDraftedPlayers() []string {
 }
 
 func player(w http.ResponseWriter, req *http.Request) {
+	path := req.URL.Path
+	pattern, _ := regexp.Compile(`/players/(\d+)`)
+	matches := pattern.FindStringSubmatch(path)
+	fmt.Println("matches: ", matches)
+
 	if req.Method == http.MethodPost {
 		err := req.ParseForm()
 		if err != nil {
@@ -173,31 +181,28 @@ func player(w http.ResponseWriter, req *http.Request) {
 		respondWithJSON(w, http.StatusOK, msg)
 		return
 	}
-	path := req.URL.Path
-	parts := strings.Split(path, "/")
-	id := parts[2]
-	fmt.Println("GET - player: ", id)
 
-	playerID, _ := strconv.ParseInt(id, 10, 64)
+	if len(matches) == 0 {
+		// return all players since they are not looking for specific player
+		fmt.Println("returning all players")
 
-	fmt.Println("path: ", path)
-	fmt.Println("parts: ", parts)
-	fmt.Println("len(parts): ", len(parts))
-	fmt.Println("playerID: ", playerID)
-
-	if len(parts) > 3 {
-		log.Fatal("You can only get info for one player at a time")
+		respondWithJSON(w, http.StatusOK, allPlayers)
+		return
 	}
 
-	// FIXME: IDs are off by one
-	if playerID > 32 { // obviously this is only used since I'm not using real IDs (hashes), just indexes
+	id, _ := strconv.Atoi(matches[1])
+	fmt.Println("GET - player: ", id)
+
+	fmt.Println("path: ", path)
+
+	if id > 32 { // obviously this is only used since I'm not using real IDs (hashes), just indexes
 		msg := "PlayerIDs are between 1 and 32 (inclusive)"
 		respondWithError(w, http.StatusNotFound, msg)
 		return
 	}
 
 	// TODO: error handling for not finding player ??
-	foundPlayer := allPlayers[playerID]
+	foundPlayer := allPlayers[id-1]
 	fmt.Println("foundPlayer: ", foundPlayer)
 
 	respondWithJSON(w, http.StatusOK, foundPlayer)

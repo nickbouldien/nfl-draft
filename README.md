@@ -4,6 +4,7 @@
 - / : index
 - / : player/
 - / : test
+- / : files/  (go to this route to see contents of the /files directory, or go to files/<file_name><file_extension>)
 
 ## Fetching data:
 curl --request GET --url <base_url>/player/:id
