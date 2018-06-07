@@ -32,16 +32,17 @@ const (
 
 // Player : struct for players
 type Player struct {
-	ID       int64
-	Name     string
-	School   string
-	Position string
-	Year     Year
-	Drafted  bool
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	School   string `json:"school"`
+	Position string `json:"position"`
+	Year     Year   `json:"year"`
+	Drafted  bool   `json:"drafted"`
 }
 
 var players []Player
 var allPlayers []Player
+var draftedPlayerIDs []string
 
 var draftedPlayers []int64
 
@@ -54,9 +55,9 @@ func main() {
 	testEnvVar := os.Getenv("TEST")
 	fmt.Println("testEnvVar: ", testEnvVar)
 
-	csvFile, e := os.Open("files/players.csv")
-	if e != nil {
-		log.Fatal(e)
+	csvFile, err := os.Open("files/players.csv")
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	defer csvFile.Close()
@@ -65,11 +66,11 @@ func main() {
 	r := csv.NewReader(csvFile)
 
 	for {
-		line, error := r.Read()
-		if error == io.EOF {
+		line, err := r.Read()
+		if err == io.EOF {
 			break
-		} else if error != nil {
-			log.Fatal("Error parsing csv: ", error)
+		} else if err != nil {
+			log.Fatal("Error parsing csv: ", err)
 		}
 
 		Line00, err := strconv.ParseInt(line[0], 10, 64)
@@ -93,6 +94,13 @@ func main() {
 
 	println("allPlayers: ", allPlayers)
 
+	// create file (if it doesn't exist)
+	file, err := os.Create("drafted_players")
+	if err != nil {
+		log.Fatal("Error creating 'drafted_players file': ", err)
+	}
+	defer file.Close()
+
 	fs := http.StripPrefix("/files", http.FileServer(http.Dir("./files")))
 	http.Handle("/files/", fs)
 
@@ -113,33 +121,45 @@ func test(w http.ResponseWriter, req *http.Request) {
 }
 
 func storeDraftedPlayer(id string) {
-	file, err := os.Create("drafted_players")
-	if err != nil {
-		log.Fatal("Error creating 'drafted_players file': ", err)
-	}
-	defer file.Close()
-	file.WriteString(id)
-}
-
-func loadDraftedPlayers() []string {
+	// file, err := os.Create("drafted_players")
+	// if err != nil {
+	// 	log.Fatal("Error creating 'drafted_players file': ", err)
+	// }
+	// defer file.Close()
 	file, err := os.Open("drafted_players")
 	if err != nil {
 		log.Fatal("Error loading 'drafted_players' file: ", err)
 	}
 
-	var draftedPlayerIDs []string
+	file.WriteString(id)
+	fmt.Println("drafted player ids 2: ", draftedPlayerIDs)
+}
+
+func loadDraftedPlayers() {
+	file, err := os.Open("drafted_players")
+	if err != nil {
+		log.Fatal("Error loading 'drafted_players' file: ", err)
+	}
+
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		draftedPlayerIDs = append(draftedPlayerIDs, scanner.Text())
 	}
-	return draftedPlayerIDs
+	// return draftedPlayerIDs
 }
 
 func player(w http.ResponseWriter, req *http.Request) {
-	path := req.URL.Path
+	url := req.URL
+	path := url.Path
 	pattern, _ := regexp.Compile(`/players/(\d+)`)
 	matches := pattern.FindStringSubmatch(path)
 	fmt.Println("matches: ", matches)
+
+	// TODO: implement sorting
+	// query := url.Query()
+	// sort := query.Get("sort")
+	// dir := query.Get("dir")
+	// fmt.Printf("sort: %s , dir: %s \n", sort, dir)
 
 	if req.Method == http.MethodPost {
 		err := req.ParseForm()
@@ -147,8 +167,12 @@ func player(w http.ResponseWriter, req *http.Request) {
 			panic(err)
 		}
 
-		id := req.FormValue("id")
+		f := req.Form
+		id := f.Get("id")
+		// id := req.FormValue("id")
+
 		fmt.Println("trying to draft player: ", id)
+		// fmt.Println("theID: ", theID)
 
 		playerID, _ := strconv.ParseInt(id, 10, 64)
 
@@ -171,6 +195,8 @@ func player(w http.ResponseWriter, req *http.Request) {
 
 		foundPlayer.Drafted = true
 		// TODO: persist this (write to csv??) so that player can't be drafted again
+		storeDraftedPlayer(id)
+		fmt.Println("drafted player ids: ", draftedPlayerIDs)
 
 		fmt.Println("foundPlayer: ", foundPlayer)
 
@@ -195,7 +221,7 @@ func player(w http.ResponseWriter, req *http.Request) {
 
 	fmt.Println("path: ", path)
 
-	if id > 32 { // obviously this is only used since I'm not using real IDs (hashes), just indexes
+	if id > 32 { // obviously this is only used since I'm not using real IDs (hashes), just indeces
 		msg := "PlayerIDs are between 1 and 32 (inclusive)"
 		respondWithError(w, http.StatusNotFound, msg)
 		return
@@ -209,11 +235,11 @@ func player(w http.ResponseWriter, req *http.Request) {
 	return // is this needed nb???
 }
 
-func createPlayerDB(fileName string) ([]Player, error) {
-	fmt.Println("createPlayerDB called")
-	var err error
-	return players, err
-}
+// func createPlayerDB(fileName string) ([]Player, error) {
+// 	fmt.Println("createPlayerDB called")
+// 	var err error
+// 	return players, err
+// }
 
 //  props to https://github.com/mlabouardy/movies-restapi for the below functions
 func respondWithError(w http.ResponseWriter, code int, msg string) {
