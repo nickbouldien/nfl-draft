@@ -34,6 +34,16 @@ or: curl -X POST --url http://localhost:8080/player/ -H 'content-type: applicati
 - [goenv](https://github.com/joho/godotenv)
 
 
+## postgres:
+- sudo -u postgres psql
+- CREATE DATABASE players_test1;
+- \c players_test1
+- CREATE TABLE ___;
+- \d or \dt (describe - \d+ players)
+- select * from ____;
+- 
+
+
 ## Inspiration
 This was inspired by Key & Peele's "East/West Bowl" comedy sketch(es), though this is the NFL draft (with one round) following the bowl
 Players used from season 2 [video](https://www.youtube.com/watch?v=rT1nGjGM2p8)

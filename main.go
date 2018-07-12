@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"database/sql"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 // Year : enumerating college class
@@ -33,7 +35,7 @@ const (
 // Player : struct for players
 type Player struct {
 	ID       int64  `json:"id"`
-	Name     string `json:"name"`
+	Name     string `json:"name" sql:"full_name"`
 	School   string `json:"school"`
 	Position string `json:"position"`
 	Year     Year   `json:"year"`
@@ -46,6 +48,10 @@ var draftedPlayerIDs []string
 
 var draftedPlayers []int64
 
+type dbStore struct {
+	db *sql.DB
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -54,6 +60,37 @@ func main() {
 
 	testEnvVar := os.Getenv("TEST")
 	fmt.Println("testEnvVar: ", testEnvVar)
+	sqlUser := os.Getenv("SQL_USER")
+	sqlDbName := os.Getenv("DB_NAME")
+	// sqlPW := os.Getenv("SQL_PW")
+
+	// connStr := os.Getenv("DB_CONN_STRING")
+	connStr := fmt.Sprintf("user=%s dbname=%s sslmode=disable", sqlUser, sqlDbName)
+	fmt.Println("connStr: ", connStr)
+
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// db, err := connectToDB()
+	rows, err := db.Query("SELECT id, full_name FROM players")
+	if err != nil {
+		fmt.Println("Failed to run query", err)
+		return
+	}
+
+	for rows.Next() {
+		player := &Player{}
+
+		if err := rows.Scan(&player.ID, &player.Name, &player.School, &player.Position, &player.Year, &player.Drafted); err != nil {
+			log.Fatal(err)
+		}
+
+		// birds = append(birds, bird)
+		fmt.Println("player: ", player)
+	}
 
 	csvFile, err := os.Open("files/players.csv")
 	if err != nil {
@@ -111,6 +148,15 @@ func main() {
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
+
+// func connectToDB() #sql.DB {
+// 	db, err := sql.Open("postgres", { connection string })
+// 	if err != nil {
+// 		log.Fatal("Could not connect to the database: ", err)
+// 	}
+
+// 	return db
+// }
 
 func index(w http.ResponseWriter, req *http.Request) {
 	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
