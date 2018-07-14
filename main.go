@@ -17,9 +17,6 @@ import (
 // // Year : enumerating college class
 // type Year int
 
-// ID : id (index) for the player
-// type ID int64
-
 // TODO: change this. should be a map from year(int) to class(string)
 // const (
 // 	none           Year = 0
@@ -61,9 +58,6 @@ func main() {
 	sqlDbName := os.Getenv("DB_NAME")
 	sqlPW := os.Getenv("SQL_PW")
 
-	connectionStr := os.Getenv("DB_CONN_STRING")
-	fmt.Println("connectionStr ", connectionStr)
-
 	connStr := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", sqlUser, sqlPW, sqlDbName)
 	fmt.Println("connStr: ", connStr)
 
@@ -75,19 +69,13 @@ func main() {
 
 	InitStore(&dbStore{db: db})
 
-	// players, err = store.GetPlayers()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// fmt.Println("players: ", players)
-
 	fs := http.StripPrefix("/files", http.FileServer(http.Dir("./files")))
 	http.Handle("/files/", fs)
 
 	http.HandleFunc("/", index)
 	http.HandleFunc("/test", test)
 	http.HandleFunc("/players/", playerHandler) // TODO: add param for non-drafted players
-	// http.HandleFunc("/scouting", scouting)
+	http.HandleFunc("/scouting", scoutingHandler)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
@@ -99,29 +87,6 @@ func index(w http.ResponseWriter, req *http.Request) {
 func test(w http.ResponseWriter, req *http.Request) {
 	respondWithJSON(w, http.StatusOK, map[string]string{"test": "success"})
 }
-
-// func storeDraftedPlayer(id string) {
-// 	file, err := os.Open("drafted_players")
-// 	if err != nil {
-// 		log.Fatal("Error loading 'drafted_players' file: ", err)
-// 	}
-
-// 	file.WriteString(id)
-// 	fmt.Println("drafted player ids 2: ", draftedPlayerIDs)
-// }
-
-// func loadDraftedPlayers() {
-// 	file, err := os.Open("drafted_players")
-// 	if err != nil {
-// 		log.Fatal("Error loading 'drafted_players' file: ", err)
-// 	}
-
-// 	scanner := bufio.NewScanner(file)
-// 	for scanner.Scan() {
-// 		draftedPlayerIDs = append(draftedPlayerIDs, scanner.Text())
-// 	}
-// 	// return draftedPlayerIDs
-// }
 
 func playerHandler(w http.ResponseWriter, req *http.Request) {
 	url := req.URL
@@ -144,18 +109,11 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 
 		f := req.Form
 		id := f.Get("id")
-		// id := req.FormValue("id")
 
 		fmt.Println("trying to draft player: ", id)
-		// fmt.Println("theID: ", theID)
 
 		playerID, _ := strconv.ParseInt(id, 10, 64)
 
-		if playerID > 32 { // obviously this is only used since I'm not using real IDs (hashes), just indexes
-			msg := "PlayerIDs are between 1 and 32 (inclusive)"
-			respondWithError(w, http.StatusNotFound, msg)
-			return
-		}
 		foundPlayer := allPlayers[playerID]
 
 		fmt.Println("foundPlayer: ", foundPlayer)
@@ -168,15 +126,7 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		foundPlayer.Drafted = true
-		// TODO: persist this (write to csv??) so that player can't be drafted again
-		// storeDraftedPlayer(id)
-		fmt.Println("drafted player ids: ", draftedPlayerIDs)
-
 		fmt.Println("foundPlayer: ", foundPlayer)
-
-		draftedPlayers = append(draftedPlayers, playerID)
-		fmt.Println("new draftedPlayers: ", draftedPlayers)
 
 		msg := "Congrats, you have successfully drafted player: " + id
 		respondWithJSON(w, http.StatusOK, msg)
@@ -187,7 +137,7 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 		// return all players since they are not looking for specific player
 		fmt.Println("returning all players")
 
-		players, err := store.GetPlayers()
+		players, err := store.Players()
 
 		if err != nil {
 			msg := "Could not retrieve players"
@@ -201,18 +151,11 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 
 	strID := matches[1]
 	id, _ := strconv.Atoi(strID)
-	// id := matches[1]
 	fmt.Println("GET - player: ", id)
 	fmt.Println("path: ", path)
 
-	// if id > 32 { // obviously this is only used since I'm not using real IDs (hashes), just ind(x/c)es
-	// 	msg := "PlayerIDs are between 1 and 32 (inclusive)"
-	// 	respondWithError(w, http.StatusNotFound, msg)
-	// 	return
-	// }
-
 	// TODO: error handling for not finding player ??
-	foundPlayer, err := store.GetPlayer(id)
+	foundPlayer, err := store.Player(id)
 	if err != nil {
 		msg := "Could not retrieve player with id: " + strID
 		respondWithError(w, http.StatusNotFound, msg)
@@ -220,6 +163,19 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, foundPlayer)
+	return
+}
+
+func scoutingHandler(w http.ResponseWriter, req *http.Request) {
+	players, err := store.Scout()
+
+	if err != nil {
+		msg := "Could not retrieve undrafted players"
+		respondWithError(w, http.StatusNotFound, msg)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, players)
 	return
 }
 
@@ -234,15 +190,6 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.WriteHeader(code)
 	w.Write(response)
 }
-
-// func connectToDB() #sql.DB {
-// 	db, err := sql.Open("postgres", { connection string })
-// 	if err != nil {
-// 		log.Fatal("Could not connect to the database: ", err)
-// 	}
-
-// 	return db
-// }
 
 // resp, err := http.Get("http://www.example.com/")
 // if err != nil {

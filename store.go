@@ -9,8 +9,9 @@ import (
 // Store interface contains all methods available for players
 type Store interface {
 	DraftPlayer(id int) (bool, error)
-	GetPlayers() ([]*Player, error)
-	GetPlayer(id int) (*Player, error)
+	Players() ([]*Player, error)
+	Player(id int) (*Player, error)
+	Scout() ([]Player, error)
 }
 
 type dbStore struct {
@@ -25,9 +26,9 @@ func (store *dbStore) DraftPlayer(id int) (bool, error) {
 
 }
 
-// GetPlayer is a function that returns all players
+// Player is a function that returns all players
 // https://golang.org/src/database/sql/example_test.go
-func (store *dbStore) GetPlayer(id int) (*Player, error) {
+func (store *dbStore) Player(id int) (*Player, error) {
 	player := &Player{}
 
 	err := store.db.QueryRow("SELECT * FROM players WHERE id = $1", id).Scan(&player.ID, &player.Name, &player.School, &player.Position, &player.Drafted)
@@ -45,8 +46,8 @@ func (store *dbStore) GetPlayer(id int) (*Player, error) {
 	}
 }
 
-// GetPlayers is a function that returns all players
-func (store *dbStore) GetPlayers() ([]*Player, error) {
+// Players is a function that returns all players
+func (store *dbStore) Players() ([]*Player, error) {
 	rows, err := store.db.Query("SELECT * FROM players")
 
 	if err != nil {
@@ -65,6 +66,31 @@ func (store *dbStore) GetPlayers() ([]*Player, error) {
 		}
 
 		players = append(players, player)
+	}
+
+	return players, nil
+}
+
+// Players is a function that returns all players
+func (store *dbStore) Scout() ([]Player, error) {
+	rows, err := store.db.Query("SELECT * FROM players WHERE drafted = false")
+
+	if err != nil {
+		fmt.Println("Failed to run query", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	players := []Player{}
+
+	for rows.Next() {
+		player := &Player{}
+
+		if err := rows.Scan(&player.ID, &player.Name, &player.School, &player.Position, &player.Drafted); err != nil {
+			log.Fatal(err)
+		}
+
+		players = append(players, *player)
 	}
 
 	return players, nil
