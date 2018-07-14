@@ -13,6 +13,7 @@ CREATE TABLE players (
 -- ENUM
 -- https://www.postgresql.org/docs/9.1/static/datatype-enum.html
 -- CREATE TYPE positon AS ENUM ('QB, RB, WR, DB, DL, OL, K, LB, P');
+-- CREATE TYPE year AS ENUM ('Fr', 'RFr', 'So', 'RSo', 'Jr', 'RJr', 'Sr', 'RSr', 'N/A');
 
 -- insert data:
 INSERT INTO players(full_name,school,position,drafted) VALUES ('Coznesster Smiff','Rutgers University','QB',FALSE);
