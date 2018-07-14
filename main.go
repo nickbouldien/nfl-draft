@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -51,6 +50,8 @@ func (p Player) String() string {
 }
 
 func main() {
+	fmt.Println("Starting server...")
+
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -72,29 +73,20 @@ func main() {
 	}
 	defer db.Close()
 
-	rows, err := db.Query("SELECT * FROM players")
-	if err != nil {
-		fmt.Println("Failed to run query", err)
-		return
-	}
+	InitStore(&dbStore{db: db})
 
-	for rows.Next() {
-		player := &Player{}
-
-		if err := rows.Scan(&player.ID, &player.Name, &player.School, &player.Position, &player.Drafted); err != nil {
-			log.Fatal(err)
-		}
-
-		players = append(players, *player)
-	}
-	fmt.Println("players: ", players)
+	// players, err = store.GetPlayers()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// fmt.Println("players: ", players)
 
 	fs := http.StripPrefix("/files", http.FileServer(http.Dir("./files")))
 	http.Handle("/files/", fs)
 
 	http.HandleFunc("/", index)
 	http.HandleFunc("/test", test)
-	http.HandleFunc("/players/", player) // TODO: add param for non-drafted players
+	http.HandleFunc("/players/", playerHandler) // TODO: add param for non-drafted players
 	// http.HandleFunc("/scouting", scouting)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -108,30 +100,30 @@ func test(w http.ResponseWriter, req *http.Request) {
 	respondWithJSON(w, http.StatusOK, map[string]string{"test": "success"})
 }
 
-func storeDraftedPlayer(id string) {
-	file, err := os.Open("drafted_players")
-	if err != nil {
-		log.Fatal("Error loading 'drafted_players' file: ", err)
-	}
+// func storeDraftedPlayer(id string) {
+// 	file, err := os.Open("drafted_players")
+// 	if err != nil {
+// 		log.Fatal("Error loading 'drafted_players' file: ", err)
+// 	}
 
-	file.WriteString(id)
-	fmt.Println("drafted player ids 2: ", draftedPlayerIDs)
-}
+// 	file.WriteString(id)
+// 	fmt.Println("drafted player ids 2: ", draftedPlayerIDs)
+// }
 
-func loadDraftedPlayers() {
-	file, err := os.Open("drafted_players")
-	if err != nil {
-		log.Fatal("Error loading 'drafted_players' file: ", err)
-	}
+// func loadDraftedPlayers() {
+// 	file, err := os.Open("drafted_players")
+// 	if err != nil {
+// 		log.Fatal("Error loading 'drafted_players' file: ", err)
+// 	}
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		draftedPlayerIDs = append(draftedPlayerIDs, scanner.Text())
-	}
-	// return draftedPlayerIDs
-}
+// 	scanner := bufio.NewScanner(file)
+// 	for scanner.Scan() {
+// 		draftedPlayerIDs = append(draftedPlayerIDs, scanner.Text())
+// 	}
+// 	// return draftedPlayerIDs
+// }
 
-func player(w http.ResponseWriter, req *http.Request) {
+func playerHandler(w http.ResponseWriter, req *http.Request) {
 	url := req.URL
 	path := url.Path
 	pattern, _ := regexp.Compile(`/players/(\d+)`)
@@ -178,7 +170,7 @@ func player(w http.ResponseWriter, req *http.Request) {
 
 		foundPlayer.Drafted = true
 		// TODO: persist this (write to csv??) so that player can't be drafted again
-		storeDraftedPlayer(id)
+		// storeDraftedPlayer(id)
 		fmt.Println("drafted player ids: ", draftedPlayerIDs)
 
 		fmt.Println("foundPlayer: ", foundPlayer)
@@ -195,26 +187,40 @@ func player(w http.ResponseWriter, req *http.Request) {
 		// return all players since they are not looking for specific player
 		fmt.Println("returning all players")
 
+		players, err := store.GetPlayers()
+
+		if err != nil {
+			msg := "Could not retrieve players"
+			respondWithError(w, http.StatusNotFound, msg)
+			return
+		}
+
 		respondWithJSON(w, http.StatusOK, players)
 		return
 	}
 
-	id, _ := strconv.Atoi(matches[1])
+	strID := matches[1]
+	id, _ := strconv.Atoi(strID)
+	// id := matches[1]
 	fmt.Println("GET - player: ", id)
 	fmt.Println("path: ", path)
 
-	if id > 32 { // obviously this is only used since I'm not using real IDs (hashes), just ind(x/c)es
-		msg := "PlayerIDs are between 1 and 32 (inclusive)"
+	// if id > 32 { // obviously this is only used since I'm not using real IDs (hashes), just ind(x/c)es
+	// 	msg := "PlayerIDs are between 1 and 32 (inclusive)"
+	// 	respondWithError(w, http.StatusNotFound, msg)
+	// 	return
+	// }
+
+	// TODO: error handling for not finding player ??
+	foundPlayer, err := store.GetPlayer(id)
+	if err != nil {
+		msg := "Could not retrieve player with id: " + strID
 		respondWithError(w, http.StatusNotFound, msg)
 		return
 	}
 
-	// TODO: error handling for not finding player ??
-	foundPlayer := players[id-1]
-	fmt.Println("foundPlayer: ", foundPlayer)
-
 	respondWithJSON(w, http.StatusOK, foundPlayer)
-	return // is this needed nb???
+	return
 }
 
 //  props to https://github.com/mlabouardy/movies-restapi for the below functions
