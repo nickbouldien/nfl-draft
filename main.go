@@ -62,10 +62,12 @@ func main() {
 	fmt.Println("testEnvVar: ", testEnvVar)
 	sqlUser := os.Getenv("SQL_USER")
 	sqlDbName := os.Getenv("DB_NAME")
-	// sqlPW := os.Getenv("SQL_PW")
+	sqlPW := os.Getenv("SQL_PW")
 
-	// connStr := os.Getenv("DB_CONN_STRING")
-	connStr := fmt.Sprintf("user=%s dbname=%s sslmode=disable", sqlUser, sqlDbName)
+	connectionStr := os.Getenv("DB_CONN_STRING")
+	fmt.Println("connectionStr ", connectionStr)
+
+	connStr := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", sqlUser, sqlPW, sqlDbName)
 	fmt.Println("connStr: ", connStr)
 
 	db, err := sql.Open("postgres", connStr)
@@ -75,7 +77,7 @@ func main() {
 	defer db.Close()
 
 	// db, err := connectToDB()
-	rows, err := db.Query("SELECT id, full_name FROM players")
+	rows, err := db.Query("SELECT * FROM players")
 	if err != nil {
 		fmt.Println("Failed to run query", err)
 		return
@@ -84,7 +86,7 @@ func main() {
 	for rows.Next() {
 		player := &Player{}
 
-		if err := rows.Scan(&player.ID, &player.Name, &player.School, &player.Position, &player.Year, &player.Drafted); err != nil {
+		if err := rows.Scan(&player.ID, &player.Name, &player.School, &player.Position, &player.Drafted); err != nil {
 			log.Fatal(err)
 		}
 
