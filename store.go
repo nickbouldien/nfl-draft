@@ -2,13 +2,14 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 )
 
 // Store interface contains all methods available for players
 type Store interface {
-	DraftPlayer(id int) (bool, error)
+	DraftPlayer(id int) (int64, error)
 	Players() ([]*Player, error)
 	Player(id int) (*Player, error)
 	Scout() ([]Player, error)
@@ -19,11 +20,43 @@ type dbStore struct {
 }
 
 // CreatePlayer is a function that creates a player and returns an error if there is one
-func (store *dbStore) DraftPlayer(id int) (bool, error) {
-	_, err := store.db.Query("INSERT INTO players(full_name, position) VALUES ($1)", id)
+func (store *dbStore) DraftPlayer(id int) (int64, error) {
 
-	return false, err
+	player, err := store.Player(id)
+	if err != nil {
+		return 0, err
+	}
 
+	fmt.Println("player drafted: ", player.Drafted)
+	if player.Drafted == true {
+		err := errors.New("the player was already drafted. pick again")
+		return 0, err
+	}
+
+	lastInsertID := 0
+
+	sqlStatement := `
+		UPDATE players 
+		SET drafted = true
+		WHERE id = $1
+		RETURNING id`
+
+	e := store.db.QueryRow(sqlStatement, id).Scan(&lastInsertID)
+	// if err != nil {
+	// 	log.Fatal("error: ", err)
+	// }
+
+	switch {
+	case e == sql.ErrNoRows:
+		log.Printf("No player with that ID.")
+		return 0, e
+	case e != nil:
+		fmt.Println(e)
+		return 0, e
+	default:
+		fmt.Printf("Player is %d\n", lastInsertID)
+		return int64(lastInsertID), nil
+	}
 }
 
 // Player is a function that returns all players

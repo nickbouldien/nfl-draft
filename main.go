@@ -114,21 +114,21 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 
 		playerID, _ := strconv.ParseInt(id, 10, 64)
 
-		foundPlayer := allPlayers[playerID]
+		pID, err := store.DraftPlayer(int(playerID))
 
-		fmt.Println("foundPlayer: ", foundPlayer)
-
-		hasBeenDrafted := foundPlayer.Drafted
-		fmt.Println("hasBeenDrafted: ", hasBeenDrafted)
-		if hasBeenDrafted {
-			msg := "player has already been drafted. pick another player"
+		if err != nil {
+			msg := "Could not retrieve players"
 			respondWithError(w, http.StatusNotFound, msg)
 			return
 		}
 
-		fmt.Println("foundPlayer: ", foundPlayer)
+		if pID == 0 {
+			msg := "Could not draft player with id: " + strconv.FormatInt(playerID, 10)
+			respondWithJSON(w, http.StatusNotFound, msg)
+			return
+		}
 
-		msg := "Congrats, you have successfully drafted player: " + id
+		msg := "Congrats, you have successfully drafted player: " + strconv.FormatInt(playerID, 10)
 		respondWithJSON(w, http.StatusOK, msg)
 		return
 	}

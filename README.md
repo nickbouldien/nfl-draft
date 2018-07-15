@@ -40,8 +40,8 @@ or: curl -X POST --url http://localhost:8080/player/ -H 'content-type: applicati
 - \c players_test1
 - CREATE TABLE ___;
 - \d or \dt (describe - \d+ players)
-- select * from ____;
-- 
+- SELECT * FROM ____;
+- UPDATE players SET drafted = true WHERE id = ___ RETURNING id;
 
 
 ## Inspiration
