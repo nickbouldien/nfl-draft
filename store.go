@@ -7,6 +7,9 @@ import (
 	"log"
 )
 
+var AlreadyDraftedErr = errors.New("the player was already drafted. pick again")
+
+
 // Store interface contains all methods available for players
 type Store interface {
 	DraftPlayer(id int) (int64, error)
@@ -27,9 +30,10 @@ func (store *dbStore) DraftPlayer(id int) (int64, error) {
 		return 0, err
 	}
 
-	fmt.Println("player drafted: ", player.Drafted)
+	fmt.Println("player is drafted: ", player.Drafted)
 	if player.Drafted == true {
-		err := errors.New("the player was already drafted. pick again")
+		err := AlreadyDraftedErr //errors.New("the player was already drafted. pick again")
+		fmt.Println("player already drafted error: ", err)
 		return 0, err
 	}
 
@@ -42,24 +46,20 @@ func (store *dbStore) DraftPlayer(id int) (int64, error) {
 		RETURNING id`
 
 	e := store.db.QueryRow(sqlStatement, id).Scan(&lastInsertID)
-	// if err != nil {
-	// 	log.Fatal("error: ", err)
-	// }
 
 	switch {
 	case e == sql.ErrNoRows:
-		log.Printf("No player with that ID.")
 		return 0, e
 	case e != nil:
 		fmt.Println(e)
 		return 0, e
 	default:
-		fmt.Printf("Player is %d\n", lastInsertID)
+		fmt.Printf("Player is %d\n ", lastInsertID)
 		return int64(lastInsertID), nil
 	}
 }
 
-// Player is a function that returns all players
+// Player is a function that returns player for an id (if player exists)
 // https://golang.org/src/database/sql/example_test.go
 func (store *dbStore) Player(id int) (*Player, error) {
 	player := &Player{}
@@ -68,10 +68,11 @@ func (store *dbStore) Player(id int) (*Player, error) {
 
 	switch {
 	case err == sql.ErrNoRows:
-		log.Printf("No player with that ID.")
+		fmt.Printf("No player with that ID.")
 		return nil, err
 	case err != nil:
-		log.Fatal(err)
+		//log.Fatal(err)
+		fmt.Println(err)
 		return nil, err
 	default:
 		fmt.Printf("Player is %s\n", player)
@@ -104,7 +105,7 @@ func (store *dbStore) Players() ([]*Player, error) {
 	return players, nil
 }
 
-// Players is a function that returns all players
+// Scout is a function that returns all players that have not been drafted
 func (store *dbStore) Scout() ([]Player, error) {
 	rows, err := store.db.Query("SELECT * FROM players WHERE drafted = false")
 

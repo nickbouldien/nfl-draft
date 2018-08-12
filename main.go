@@ -14,18 +14,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// // Year : enumerating college class
-// type Year int
-
-// TODO: change this. should be a map from year(int) to class(string)
-// const (
-// 	none           Year = 0
-// 	sophomore      Year = 2
-// 	junior         Year = 3
-// 	senior         Year = 4
-// 	redshirtSenior Year = 5
-// )
-
 // Player : struct for players
 type Player struct {
 	ID       int64  `json:"id"`
@@ -37,10 +25,6 @@ type Player struct {
 }
 
 var players []Player
-var allPlayers []Player
-var draftedPlayerIDs []string
-
-var draftedPlayers []int64
 
 func (p Player) String() string {
 	return fmt.Sprintf("Player<ID=%d Name=%q>", p.ID, p.Name)
@@ -74,7 +58,7 @@ func main() {
 
 	http.HandleFunc("/", index)
 	http.HandleFunc("/test", test)
-	http.HandleFunc("/players/", playerHandler) // TODO: add param for non-drafted players
+	http.HandleFunc("/players/", playerHandler) // TODO: add param to get non-drafted players?? (get rid of /scouting route)
 	http.HandleFunc("/scouting", scoutingHandler)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -93,7 +77,6 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 	path := url.Path
 	pattern, _ := regexp.Compile(`/players/(\d+)`)
 	matches := pattern.FindStringSubmatch(path)
-	fmt.Println("matches: ", matches)
 
 	// TODO: implement sorting
 	// query := url.Query()
@@ -104,7 +87,7 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodPost {
 		err := req.ParseForm()
 		if err != nil {
-			panic(err)
+			log.Fatal(err) // TODO: best way to deal with this???
 		}
 
 		f := req.Form
@@ -116,21 +99,26 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 
 		pID, err := store.DraftPlayer(int(playerID))
 
-		if err != nil {
-			msg := "Could not retrieve players"
+		switch {
+		case err == AlreadyDraftedErr:
+			msg := (AlreadyDraftedErr).Error()
+			fmt.Printf("Already drafted err. %s", msg)
 			respondWithError(w, http.StatusNotFound, msg)
 			return
-		}
-
-		if pID == 0 {
-			msg := "Could not draft player with id: " + strconv.FormatInt(playerID, 10)
+		case pID == 0:
+			fmt.Println("did not find player")
+			msg := "Player with id: " + strconv.FormatInt(playerID, 10) + " does not exist."
 			respondWithJSON(w, http.StatusNotFound, msg)
 			return
+		case err != nil:
+			msg := "Could not draft player with id: " + strconv.FormatInt(playerID, 10)
+			respondWithError(w, http.StatusNotFound, msg)
+			return
+		default:
+			msg := "Congrats, you have successfully drafted player: " + strconv.FormatInt(playerID, 10)
+			respondWithJSON(w, http.StatusOK, msg)
+			return
 		}
-
-		msg := "Congrats, you have successfully drafted player: " + strconv.FormatInt(playerID, 10)
-		respondWithJSON(w, http.StatusOK, msg)
-		return
 	}
 
 	if len(matches) == 0 {
@@ -152,7 +140,6 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 	strID := matches[1]
 	id, _ := strconv.Atoi(strID)
 	fmt.Println("GET - player: ", id)
-	fmt.Println("path: ", path)
 
 	// TODO: error handling for not finding player ??
 	foundPlayer, err := store.Player(id)
@@ -190,10 +177,3 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.WriteHeader(code)
 	w.Write(response)
 }
-
-// resp, err := http.Get("http://www.example.com/")
-// if err != nil {
-// 	log.Fatal("failed to get: ")
-// }
-// defer resp.Body.Close()
-// fmt.Print(resp)
