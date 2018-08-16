@@ -61,7 +61,9 @@ This is just a small thing so I could mess around with Go.  Feel free to correct
 
 
 ## TODO
+- WRITE TESTS
+- make an event table that records what team drafted which player (and when)
 - allow user to update if player is drafted or not (undraft??)
-- reset button to "undraft" all players
-- allow user to add more players
+- reset button to "undraft" all players and start over
+- allow user to add more players to be drafted (from other seasons)
 - write more idiomatic Go
