@@ -71,7 +71,6 @@ func (store *dbStore) Player(id int) (*Player, error) {
 		fmt.Printf("No player with that ID.")
 		return nil, err
 	case err != nil:
-		//log.Fatal(err)
 		fmt.Println(err)
 		return nil, err
 	default:

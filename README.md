@@ -12,9 +12,9 @@
 go run *.go
 
 ## Fetching data:
-curl --request GET --url <base_url>/player/:id
+curl --request GET --url <base_url>/players/:id
 
-ex: curl --request GET --url http://localhost:8080/player/3
+ex: curl --request GET --url http://localhost:8080/players/3
 
 
 ## Drafting a player:
@@ -22,9 +22,9 @@ url: base url
 id: id of the desired player
 (make sure the header content-type is correct)
 
-curl --request POST --url <base_url>/player/ --header 'content-type: application/x-www-form-urlencoded' --data id=3
+curl --request POST --url <base_url>/players/ --header 'content-type: application/x-www-form-urlencoded' --data id=3
 
-ex: curl --request POST --url http://localhost:8080/player/ --header 'content-type: application/x-www-form-urlencoded' --data id=3
+ex: curl --request POST --url http://localhost:8080/players/ --header 'content-type: application/x-www-form-urlencoded' --data id=3
 
 
 ## postgres:
@@ -61,6 +61,7 @@ This is just a small thing so I could mess around with Go.  Feel free to correct
 
 
 ## TODO
+- "appropriately" handle errors (probably don't need to log.Fatal() everything...)
 - WRITE TESTS
 - make an event table that records what team drafted which player (and when)
 - allow user to update if player is drafted or not (undraft??)
