@@ -29,14 +29,13 @@ ex: curl --request POST --url http://localhost:8080/players/ --header 'content-t
 
 ## postgres:
 - sudo -u postgres psql
-- CREATE DATABASE players_test1;
-- \c players_test1
-- CREATE TABLE ___;
-- \d or \dt (describe - \d+ players)
-- SELECT * FROM ____;
+- CREATE DATABASE players_dev;
+- \c players_dev
+- CREATE TABLE players;
+- SELECT * FROM players;
+- insert the sample data
 - UPDATE players SET drafted = true WHERE id = ___ RETURNING id;
-- 
-- players_test1=# SELECT position, count(position) FROM players GROUP BY position ORDER BY count DESC;
+- players_dev=# SELECT position, count(position) FROM players GROUP BY position ORDER BY count DESC;
 
 
 ## Resources:

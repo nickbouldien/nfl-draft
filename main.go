@@ -40,10 +40,14 @@ func main() {
 
 	sqlUser := os.Getenv("SQL_USER")
 	sqlDbName := os.Getenv("DB_NAME")
-	sqlPW := os.Getenv("SQL_PW")
+	//sqlPW := os.Getenv("SQL_PW")
 
-	connStr := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", sqlUser, sqlPW, sqlDbName)
-	fmt.Println("connStr: ", connStr)
+	connStr := fmt.Sprintf("user=%s dbname=%s sslmode=disable", sqlUser, sqlDbName)
+	//if sqlPW != "" {
+	//	connStr += fmt.Sprintf("dbpassword=%s", sqlPw)
+	//}
+	fmt.Println("sqlUser: ", sqlUser)
+	fmt.Println("sqlDbName: ", sqlDbName)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -59,22 +63,30 @@ func main() {
 	http.HandleFunc("/", index)
 	http.HandleFunc("/test", test)
 	http.HandleFunc("/players/", playerHandler) // TODO: add param to get non-drafted players?? (get rid of /scouting route)
+	http.HandleFunc("/reset", playerResetHandler) // FIXME - add /reset to the players/ route and handle it there
 	http.HandleFunc("/scouting", scoutingHandler)
 
+
+	//http.Header().Set("Access-Control-Allow-Origin", "*")
+	//(*w).Header().Set("Access-Control-Allow-Origin", "*")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func index(w http.ResponseWriter, req *http.Request) {
-	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	respondWithJSON(w, http.StatusOK, map[string]string{"index": "success"})
 }
 
 func test(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	respondWithJSON(w, http.StatusOK, map[string]string{"test": "success"})
 }
 
 func playerHandler(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	url := req.URL
 	path := url.Path
+	// FIXME - send error if user sends an id other than an int
 	pattern, _ := regexp.Compile(`/players/(\d+)`)
 	matches := pattern.FindStringSubmatch(path)
 
@@ -84,18 +96,27 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 	// dir := query.Get("dir")
 	// fmt.Printf("sort: %s , dir: %s \n", sort, dir)
 
+
+
 	if req.Method == http.MethodPost {
-		err := req.ParseForm()
-		if err != nil {
-			log.Fatal(err) // TODO: best way to deal with this???
-		}
-
-		f := req.Form
-		id := f.Get("id")
-
+		fmt.Println("matches: ", matches)
+		strID := matches[1]
+		id, _ := strconv.Atoi(strID)
 		fmt.Println("trying to draft player: ", id)
 
-		playerID, _ := strconv.ParseInt(id, 10, 64)
+
+		//err := req.ParseForm()
+		//if err != nil {
+		//	respondWithJSON(w, http.StatusInternalServerError, err)
+		//	return
+		//}
+		//f := req.Form
+		//id := f.Get("id")
+
+		//fmt.Println("trying to draft player: ", id)
+
+		playerID, _ := strconv.ParseInt(strID, 10, 64)
+		//playerID := id
 
 		pID, err := store.DraftPlayer(int(playerID))
 
@@ -150,6 +171,18 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, foundPlayer)
+	return
+}
+
+func playerResetHandler(w http.ResponseWriter, req *http.Request) {
+	num, err := store.Reset()
+	if err != nil {
+		msg := "Could not reset the players to be undfrafted"
+		respondWithError(w, http.StatusNotFound, msg)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, num)
 	return
 }
 
