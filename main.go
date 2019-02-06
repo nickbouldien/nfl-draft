@@ -96,27 +96,13 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 	// dir := query.Get("dir")
 	// fmt.Printf("sort: %s , dir: %s \n", sort, dir)
 
-
-
 	if req.Method == http.MethodPost {
 		fmt.Println("matches: ", matches)
 		strID := matches[1]
 		id, _ := strconv.Atoi(strID)
 		fmt.Println("trying to draft player: ", id)
 
-
-		//err := req.ParseForm()
-		//if err != nil {
-		//	respondWithJSON(w, http.StatusInternalServerError, err)
-		//	return
-		//}
-		//f := req.Form
-		//id := f.Get("id")
-
-		//fmt.Println("trying to draft player: ", id)
-
 		playerID, _ := strconv.ParseInt(strID, 10, 64)
-		//playerID := id
 
 		pID, err := store.DraftPlayer(int(playerID))
 
@@ -175,9 +161,10 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func playerResetHandler(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	num, err := store.Reset()
 	if err != nil {
-		msg := "Could not reset the players to be undfrafted"
+		msg := "Could not reset the players to be undrafted"
 		respondWithError(w, http.StatusNotFound, msg)
 		return
 	}
