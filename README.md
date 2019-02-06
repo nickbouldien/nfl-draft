@@ -43,7 +43,7 @@ ex: curl --request POST --url http://localhost:8080/players/ --header 'content-t
 - [Go docs](https://golang.org)
 - [Simple JSON Rest API in Go (tutorial)](https://www.youtube.com/watch?v=hRR-Zy1H-Yo)
 - Medium article ["Build RESTful API in Go and MongoDB"](https://github.com/mlabouardy/movies-restapi) by Mohamed Labouardy
-
+- [ENABLING CORS ON A GO WEB SERVER](https://flaviocopes.com/golang-enable-cors/), article by Flavio Copes
 
 ## Cool packages I used/learned about:
 - [goenv](https://github.com/joho/godotenv)

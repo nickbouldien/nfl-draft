@@ -20,7 +20,6 @@ type Player struct {
 	Name     string `json:"name" sql:"full_name"`
 	School   string `json:"school"`
 	Position string `json:"position"`
-	// Year     Year   `json:"year"`
 	Drafted bool `json:"drafted"`
 }
 
@@ -66,26 +65,23 @@ func main() {
 	http.HandleFunc("/reset", playerResetHandler) // FIXME - add /reset to the players/ route and handle it there
 	http.HandleFunc("/scouting", scoutingHandler)
 
-
-	//http.Header().Set("Access-Control-Allow-Origin", "*")
-	//(*w).Header().Set("Access-Control-Allow-Origin", "*")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func index(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	enableCors(&w)
 	respondWithJSON(w, http.StatusOK, map[string]string{"index": "success"})
 }
 
 func test(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	enableCors(&w)
 	respondWithJSON(w, http.StatusOK, map[string]string{"test": "success"})
 }
 
 func playerHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	url := req.URL
-	path := url.Path
+	enableCors(&w)
+	path := req.URL.Path
+	//path := url.Path
 	// FIXME - send error if user sends an id other than an int
 	pattern, _ := regexp.Compile(`/players/(\d+)`)
 	matches := pattern.FindStringSubmatch(path)
@@ -161,7 +157,7 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func playerResetHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	enableCors(&w)
 	num, err := store.Reset()
 	if err != nil {
 		msg := "Could not reset the players to be undrafted"
@@ -174,6 +170,7 @@ func playerResetHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func scoutingHandler(w http.ResponseWriter, req *http.Request) {
+	enableCors(&w)
 	players, err := store.Scout()
 
 	if err != nil {
@@ -196,4 +193,8 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(response)
+}
+
+func enableCors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
 }

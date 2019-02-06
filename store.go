@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-var AlreadyDraftedErr = errors.New("he player you selected was already drafted. pick again")
+var AlreadyDraftedErr = errors.New("the player you selected was already drafted. pick again")
 
 
 // Store interface contains all methods available for players
