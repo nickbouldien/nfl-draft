@@ -2,14 +2,12 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"nfl_draft/utils"
 	"os"
-	"path"
 	"strconv"
-	"strings"
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -29,7 +27,7 @@ func (p Player) String() string {
 }
 
 func main() {
-	fmt.Println("Starting server...")
+	log.Println("Starting server...")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -43,8 +41,8 @@ func main() {
 	//if sqlPW != "" {
 	//	connStr += fmt.Sprintf("dbpassword=%s", sqlPw)
 	//}
-	fmt.Println("sqlUser: ", sqlUser)
-	fmt.Println("sqlDbName: ", sqlDbName)
+	log.Println("sqlUser: ", sqlUser)
+	log.Println("sqlDbName: ", sqlDbName)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -66,30 +64,25 @@ func main() {
 }
 
 func index(w http.ResponseWriter, req *http.Request) {
-	enableCors(&w)
-	respondWithJSON(w, http.StatusOK, map[string]string{"index": "success"})
+	utils.EnableCors(&w)
+	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"index": "success"})
 }
 
 func test(w http.ResponseWriter, req *http.Request) {
-	enableCors(&w)
-	respondWithJSON(w, http.StatusOK, map[string]string{"test": "success"})
+	utils.EnableCors(&w)
+	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"test": "success"})
 }
 
 func playerHandler(w http.ResponseWriter, req *http.Request) {
-	enableCors(&w)
-	basePath, rest := ShiftPath(req.URL.Path) // to take out "players" from the path
-	log.Println("basePath: ", basePath, rest)
+	utils.EnableCors(&w)
+	_, rest := utils.ShiftPath(req.URL.Path) // to take out "players" from the path
 
-	head, tail := ShiftPath(rest)
-	log.Println("head: ", head)
-	log.Println("tail: ", tail)
+	head, _ := utils.ShiftPath(rest)
 
 	var pID string
 	if head != "" {
-		log.Println("head != '': ", head)
 		id, err := strconv.Atoi(head)
 		if err == nil {
-			log.Println("id: ", id)
 			pID = strconv.Itoa(id)
 			head = "id" // hacky solution ...
 		}
@@ -98,110 +91,81 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 			num, err := store.Reset()
 			if err != nil {
 				msg := "Could not reset the players to be undrafted"
-				respondWithError(w, http.StatusInternalServerError, msg)
+				utils.RespondWithError(w, http.StatusInternalServerError, msg)
 				return
 			}
-			respondWithJSON(w, http.StatusOK, num)
+			utils.RespondWithJSON(w, http.StatusOK, num)
 			return
 		case "id":
 			switch req.Method {
 			case "GET":
-				fmt.Println("getting player with id: ", pID)
+				log.Println("getting player with id: ", pID)
 				p, err := store.Player(id)
 				if err != nil {
 					msg := "Could not retrieve player with id: " + pID
-					respondWithError(w, http.StatusNotFound, msg)
+					utils.RespondWithError(w, http.StatusNotFound, msg)
 					return
 				}
-				respondWithJSON(w, http.StatusOK, p)
+				utils.RespondWithJSON(w, http.StatusOK, p)
 				return
 			case "POST":
-				fmt.Println("trying to draft player: ", pID)
-				//playerID := int64(id)// strconv.ParseInt(strID, 10, 64)
+				log.Println("trying to draft player:", pID)
 				playerID, err := store.DraftPlayer(id)
-
 				switch {
 				case err == AlreadyDraftedErr:
 					msg := (AlreadyDraftedErr).Error()
-					fmt.Printf("Already drafted err. %s", msg)
-					respondWithError(w, http.StatusNotFound, msg)
+					log.Printf("Already drafted err. %s", msg)
+					utils.RespondWithError(w, http.StatusNotFound, msg)
 					return
 				case playerID == 0:
-					fmt.Println("did not find player")
+					log.Println("did not find player")
 					msg := "Player with id: " + pID + " does not exist."
-					respondWithJSON(w, http.StatusNotFound, msg)
+					utils.RespondWithJSON(w, http.StatusNotFound, msg)
 					return
 				case err != nil:
 					msg := "Could not draft player with id: " + pID
-					respondWithError(w, http.StatusNotFound, msg)
+					utils.RespondWithError(w, http.StatusNotFound, msg)
 					return
 				default:
 					msg := "Congrats, you have successfully drafted player: " + pID
-					respondWithJSON(w, http.StatusOK, msg)
+					utils.RespondWithJSON(w, http.StatusOK, msg)
 					return
 				}
 			default:
 				msg := "Method not allowed"
-				respondWithError(w, http.StatusMethodNotAllowed, msg)
+				utils.RespondWithError(w, http.StatusMethodNotAllowed, msg)
 				return
 			}
 		default:
-			respondWithError(w, http.StatusNotFound, "Not found")
+			utils.RespondWithError(w, http.StatusNotFound, "Not found")
 			return
 		}
 	}
 
 	switch req.Method {
 	case "GET":
-		// return all players since they are not looking for specific player
-		//	// TODO: implement sorting
-		//	// query := url.Query()
-		//	// sort := query.Get("sort")
-		//	// dir := query.Get("dir")
-		//	// fmt.Printf("sort: %s , dir: %s \n", sort, dir)
-		fmt.Println("returning all players")
+		// TODO: implement sorting
+		// query := url.Query()
+		// sort := query.Get("sort")
+		// dir := query.Get("dir")
+		// fmt.Printf("sort: %s , dir: %s \n", sort, dir)
+		log.Println("returning all players")
 		players, err := store.Players()
 		if err != nil {
 			msg := "Could not retrieve players"
-			respondWithError(w, http.StatusNotFound, msg)
+			utils.RespondWithError(w, http.StatusNotFound, msg)
 			return
 		}
-		respondWithJSON(w, http.StatusOK, players)
+		utils.RespondWithJSON(w, http.StatusOK, players)
 		return
 	case "POST":
 		// TODO - make route to create new players
 		msg := "Desired method not yet implemented"
-		respondWithError(w, http.StatusNotImplemented, msg)
+		utils.RespondWithError(w, http.StatusNotImplemented, msg)
 		return
 	default:
 		msg := "Method not allowed"
-		respondWithError(w, http.StatusMethodNotAllowed, msg)
+		utils.RespondWithError(w, http.StatusMethodNotAllowed, msg)
 		return
 	}
-}
-
-//  props to https://github.com/mlabouardy/movies-restapi for the below functions
-func respondWithError(w http.ResponseWriter, code int, msg string) {
-	respondWithJSON(w, code, map[string]string{"error": msg})
-}
-
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	response, _ := json.Marshal(payload)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	w.Write(response)
-}
-
-func enableCors(w *http.ResponseWriter) {
-	(*w).Header().Set("Access-Control-Allow-Origin", "*")
-}
-
-func ShiftPath(p string) (head, tail string) {
-// https://blog.merovius.de/2017/06/18/how-not-to-use-an-http-router.html
-	p = path.Clean("/" + p)
-	i := strings.Index(p[1:], "/") + 1
-	if i <= 0 {
-		return p[1:], "/"
-	}
-	return p[1:i], p[i:]
 }
