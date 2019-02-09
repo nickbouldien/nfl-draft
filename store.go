@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-var AlreadyDraftedErr = errors.New("the player was already drafted. pick again")
+var AlreadyDraftedErr = errors.New("the player you selected was already drafted. pick again")
 
 
 // Store interface contains all methods available for players
@@ -15,6 +15,7 @@ type Store interface {
 	DraftPlayer(id int) (int64, error)
 	Players() ([]*Player, error)
 	Player(id int) (*Player, error)
+	Reset() (int64, error)
 	Scout() ([]Player, error)
 }
 
@@ -24,7 +25,7 @@ type dbStore struct {
 
 // CreatePlayer is a function that creates a player and returns an error if there is one
 func (store *dbStore) DraftPlayer(id int) (int64, error) {
-
+	// FIXME - sending back 0 for errors??
 	player, err := store.Player(id)
 	if err != nil {
 		return 0, err
@@ -71,7 +72,6 @@ func (store *dbStore) Player(id int) (*Player, error) {
 		fmt.Printf("No player with that ID.")
 		return nil, err
 	case err != nil:
-		//log.Fatal(err)
 		fmt.Println(err)
 		return nil, err
 	default:
@@ -104,6 +104,26 @@ func (store *dbStore) Players() ([]*Player, error) {
 
 	return players, nil
 }
+
+// Reset is a function that resets all drafted players to be undrafted
+func (store *dbStore) Reset() (int64, error) {
+	sqlStatement := `
+		UPDATE players 
+		SET drafted = false
+		WHERE drafted = true`
+
+	result, err := store.db.Exec(sqlStatement)
+	if err != nil {
+		return 0, err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return rows, nil
+}
+
 
 // Scout is a function that returns all players that have not been drafted
 func (store *dbStore) Scout() ([]Player, error) {

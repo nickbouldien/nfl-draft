@@ -2,12 +2,11 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"nfl_draft/utils"
 	"os"
-	"regexp"
 	"strconv"
 
 	"github.com/joho/godotenv"
@@ -20,19 +19,15 @@ type Player struct {
 	Name     string `json:"name" sql:"full_name"`
 	School   string `json:"school"`
 	Position string `json:"position"`
-	// Year     Year   `json:"year"`
 	Drafted bool `json:"drafted"`
 }
-
-var players []Player
 
 func (p Player) String() string {
 	return fmt.Sprintf("Player<ID=%d Name=%q>", p.ID, p.Name)
 }
 
 func main() {
-	fmt.Println("Starting server...")
-
+	log.Println("Starting server...")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -42,8 +37,14 @@ func main() {
 	sqlDbName := os.Getenv("DB_NAME")
 	sqlPW := os.Getenv("SQL_PW")
 
-	connStr := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", sqlUser, sqlPW, sqlDbName)
-	fmt.Println("connStr: ", connStr)
+	var connStr string
+	if sqlPW != "" {
+		connStr = fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", sqlUser, sqlPW, sqlDbName)
+	} else {
+		connStr = fmt.Sprintf("user=%s dbname=%s sslmode=disable", sqlUser, sqlDbName)
+	}
+	log.Println("sqlUser: ", sqlUser)
+	log.Println("sqlDbName: ", sqlDbName)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -56,124 +57,117 @@ func main() {
 	fs := http.StripPrefix("/files", http.FileServer(http.Dir("./files")))
 	http.Handle("/files/", fs)
 
+	http.HandleFunc("/players/", playerHandler) // TODO: add param to get non-drafted players?? (get rid of /scouting route)
 	http.HandleFunc("/", index)
 	http.HandleFunc("/test", test)
-	http.HandleFunc("/players/", playerHandler) // TODO: add param to get non-drafted players?? (get rid of /scouting route)
-	http.HandleFunc("/scouting", scoutingHandler)
+	//http.HandleFunc("/scouting", scoutingHandler)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func index(w http.ResponseWriter, req *http.Request) {
-	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
+	utils.EnableCors(&w)
+	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"index": "success"})
 }
 
 func test(w http.ResponseWriter, req *http.Request) {
-	respondWithJSON(w, http.StatusOK, map[string]string{"test": "success"})
+	utils.EnableCors(&w)
+	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"test": "success"})
 }
 
 func playerHandler(w http.ResponseWriter, req *http.Request) {
-	url := req.URL
-	path := url.Path
-	pattern, _ := regexp.Compile(`/players/(\d+)`)
-	matches := pattern.FindStringSubmatch(path)
+	utils.EnableCors(&w)
+	_, rest := utils.ShiftPath(req.URL.Path) // to take out "players" from the path
 
-	// TODO: implement sorting
-	// query := url.Query()
-	// sort := query.Get("sort")
-	// dir := query.Get("dir")
-	// fmt.Printf("sort: %s , dir: %s \n", sort, dir)
+	head, _ := utils.ShiftPath(rest)
 
-	if req.Method == http.MethodPost {
-		err := req.ParseForm()
-		if err != nil {
-			log.Fatal(err) // TODO: best way to deal with this???
+	var pID string
+	if head != "" {
+		id, err := strconv.Atoi(head)
+		if err == nil {
+			pID = strconv.Itoa(id)
+			head = "id" // hacky solution ...
 		}
-
-		f := req.Form
-		id := f.Get("id")
-
-		fmt.Println("trying to draft player: ", id)
-
-		playerID, _ := strconv.ParseInt(id, 10, 64)
-
-		pID, err := store.DraftPlayer(int(playerID))
-
-		switch {
-		case err == AlreadyDraftedErr:
-			msg := (AlreadyDraftedErr).Error()
-			fmt.Printf("Already drafted err. %s", msg)
-			respondWithError(w, http.StatusNotFound, msg)
+		switch head {
+		case "reset":
+			num, err := store.Reset()
+			if err != nil {
+				msg := "Could not reset the players to be undrafted"
+				utils.RespondWithError(w, http.StatusInternalServerError, msg)
+				return
+			}
+			utils.RespondWithJSON(w, http.StatusOK, num)
 			return
-		case pID == 0:
-			fmt.Println("did not find player")
-			msg := "Player with id: " + strconv.FormatInt(playerID, 10) + " does not exist."
-			respondWithJSON(w, http.StatusNotFound, msg)
-			return
-		case err != nil:
-			msg := "Could not draft player with id: " + strconv.FormatInt(playerID, 10)
-			respondWithError(w, http.StatusNotFound, msg)
-			return
+		case "id":
+			switch req.Method {
+			case "GET":
+				log.Println("getting player with id: ", pID)
+				p, err := store.Player(id)
+				if err != nil {
+					msg := "Could not retrieve player with id: " + pID
+					utils.RespondWithError(w, http.StatusNotFound, msg)
+					return
+				}
+				utils.RespondWithJSON(w, http.StatusOK, p)
+				return
+			case "POST":
+				log.Println("trying to draft player:", pID)
+				playerID, err := store.DraftPlayer(id)
+				switch {
+				case err == AlreadyDraftedErr:
+					msg := (AlreadyDraftedErr).Error()
+					log.Printf("Already drafted err. %s", msg)
+					utils.RespondWithError(w, http.StatusNotFound, msg)
+					return
+				case playerID == 0:
+					log.Println("did not find player")
+					msg := "Player with id: " + pID + " does not exist."
+					utils.RespondWithJSON(w, http.StatusNotFound, msg)
+					return
+				case err != nil:
+					msg := "Could not draft player with id: " + pID
+					utils.RespondWithError(w, http.StatusNotFound, msg)
+					return
+				default:
+					msg := "Congrats, you have successfully drafted player: " + pID
+					utils.RespondWithJSON(w, http.StatusOK, msg)
+					return
+				}
+			default:
+				msg := "Method not allowed"
+				utils.RespondWithError(w, http.StatusMethodNotAllowed, msg)
+				return
+			}
 		default:
-			msg := "Congrats, you have successfully drafted player: " + strconv.FormatInt(playerID, 10)
-			respondWithJSON(w, http.StatusOK, msg)
+			utils.RespondWithError(w, http.StatusNotFound, "Not found")
 			return
 		}
 	}
 
-	if len(matches) == 0 {
-		// return all players since they are not looking for specific player
-		fmt.Println("returning all players")
-
+	switch req.Method {
+	case "GET":
+		// TODO: implement sorting
+		// query := url.Query()
+		// sort := query.Get("sort")
+		// dir := query.Get("dir")
+		// fmt.Printf("sort: %s , dir: %s \n", sort, dir)
+		log.Println("returning all players")
 		players, err := store.Players()
-
 		if err != nil {
 			msg := "Could not retrieve players"
-			respondWithError(w, http.StatusNotFound, msg)
+			utils.RespondWithError(w, http.StatusNotFound, msg)
 			return
 		}
-
-		respondWithJSON(w, http.StatusOK, players)
+		utils.RespondWithJSON(w, http.StatusOK, players)
+		return
+	case "POST":
+		// TODO - make route to create new players
+		msg := "Desired method not yet implemented"
+		utils.RespondWithError(w, http.StatusNotImplemented, msg)
+		return
+	default:
+		msg := "Method not allowed"
+		utils.RespondWithError(w, http.StatusMethodNotAllowed, msg)
 		return
 	}
-
-	strID := matches[1]
-	id, _ := strconv.Atoi(strID)
-	fmt.Println("GET - player: ", id)
-
-	// TODO: error handling for not finding player ??
-	foundPlayer, err := store.Player(id)
-	if err != nil {
-		msg := "Could not retrieve player with id: " + strID
-		respondWithError(w, http.StatusNotFound, msg)
-		return
-	}
-
-	respondWithJSON(w, http.StatusOK, foundPlayer)
-	return
-}
-
-func scoutingHandler(w http.ResponseWriter, req *http.Request) {
-	players, err := store.Scout()
-
-	if err != nil {
-		msg := "Could not retrieve undrafted players"
-		respondWithError(w, http.StatusNotFound, msg)
-		return
-	}
-
-	respondWithJSON(w, http.StatusOK, players)
-	return
-}
-
-//  props to https://github.com/mlabouardy/movies-restapi for the below functions
-func respondWithError(w http.ResponseWriter, code int, msg string) {
-	respondWithJSON(w, code, map[string]string{"error": msg})
-}
-
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	response, _ := json.Marshal(payload)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	w.Write(response)
 }
