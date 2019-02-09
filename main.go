@@ -35,12 +35,14 @@ func main() {
 
 	sqlUser := os.Getenv("SQL_USER")
 	sqlDbName := os.Getenv("DB_NAME")
-	//sqlPW := os.Getenv("SQL_PW")
+	sqlPW := os.Getenv("SQL_PW")
 
-	connStr := fmt.Sprintf("user=%s dbname=%s sslmode=disable", sqlUser, sqlDbName)
-	//if sqlPW != "" {
-	//	connStr += fmt.Sprintf("dbpassword=%s", sqlPw)
-	//}
+	var connStr string
+	if sqlPW != "" {
+		connStr = fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", sqlUser, sqlPW, sqlDbName)
+	} else {
+		connStr = fmt.Sprintf("user=%s dbname=%s sslmode=disable", sqlUser, sqlDbName)
+	}
 	log.Println("sqlUser: ", sqlUser)
 	log.Println("sqlDbName: ", sqlDbName)
 
