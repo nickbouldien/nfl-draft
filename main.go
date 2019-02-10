@@ -60,7 +60,6 @@ func main() {
 	http.HandleFunc("/players/", playerHandler) // TODO: add param to get non-drafted players?? (get rid of /scouting route)
 	http.HandleFunc("/", index)
 	http.HandleFunc("/test", test)
-	//http.HandleFunc("/scouting", scoutingHandler)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
