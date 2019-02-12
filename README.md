@@ -2,12 +2,12 @@
 
 ## Inspiration
 This was inspired by [Key & Peele's](https://en.wikipedia.org/wiki/Key_%26_Peele) "East/West Bowl" comedy sketch(es), though this is the NFL draft (with one round) following the bowl.
-Players used from season 2 [video](https://www.youtube.com/watch?v=rT1nGjGM2p8).
-Can find season 1 video [here](http://www.cc.com/video-clips/5fndtz/key-and-peele-east-west-bowl)
+The players used are from season 2 [video](https://www.youtube.com/watch?v=rT1nGjGM2p8).
+Season 1 video can be found [here](http://www.cc.com/video-clips/5fndtz/key-and-peele-east-west-bowl)
 
 (disclaimer: the positions and year/class are made up by me (i.e., not explicity stated in the videos))
 
-This is just a small thing so I could mess around with Go.  Feel free to correct/let me know of any of the (many) mistakes.
+This is just a small thing I did as an excuse to mess around with Go for the first time
 
 ## Routes:
 - `/index`
@@ -32,7 +32,6 @@ ex: `curl --request GET --url http://localhost:8080/players/`
 ## Draft a player:
 url: base url
 id: id of the desired player
-(make sure the header content-type is correct)
 
 `curl --request POST --url <base_url>/players/id`
 
