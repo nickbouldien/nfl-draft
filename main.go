@@ -22,6 +22,19 @@ type Player struct {
 	Drafted bool `json:"drafted"`
 }
 
+// Team : struct for teams
+type Team struct {
+	ID       int64  `json:"id"`
+	Name     string `json:"name" sql:"full_name"`
+	City   string `json:"city"`
+	Mascot string `json:"mascot"`
+	DraftOrder bool `json:"draftOrder" sql:"draft_order"`
+}
+
+func (t Team) String() string {
+	return fmt.Sprintf("Team<ID=%d Name=%q City=%q Mascot=%q>", t.ID, t.Name, t.City, t.Mascot)
+}
+
 func (p Player) String() string {
 	return fmt.Sprintf("Player<ID=%d Name=%q>", p.ID, p.Name)
 }
@@ -58,6 +71,7 @@ func main() {
 	http.Handle("/files/", fs)
 
 	http.HandleFunc("/players/", playerHandler) // TODO: add param to get non-drafted players?? (get rid of /scouting route)
+	http.HandleFunc("/teams/", teamHandler)
 	http.HandleFunc("/", index)
 	http.HandleFunc("/test", test)
 
@@ -72,6 +86,11 @@ func index(w http.ResponseWriter, req *http.Request) {
 func test(w http.ResponseWriter, req *http.Request) {
 	utils.EnableCors(&w)
 	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"test": "success"})
+}
+
+func teamHandler(w http.ResponseWriter, req *http.Request) {
+	utils.EnableCors(&w)
+	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"team": "success"})
 }
 
 func playerHandler(w http.ResponseWriter, req *http.Request) {
