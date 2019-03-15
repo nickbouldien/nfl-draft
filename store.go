@@ -150,7 +150,7 @@ func (store *dbStore) Scout() ([]Player, error) {
 	return players, nil
 }
 
-// Player is a function that returns player for an id (if player exists)
+// Team is a function that returns a team for an id (if the team exists)
 // https://golang.org/src/database/sql/example_test.go
 func (store *dbStore) Team(id int) (*Team, error) {
 	team := &Team{}
@@ -170,7 +170,7 @@ func (store *dbStore) Team(id int) (*Team, error) {
 	}
 }
 
-// Players is a function that returns all players
+// Teams is a function that returns all teams
 func (store *dbStore) Teams() ([]*Team, error) {
 	rows, err := store.db.Query("SELECT * FROM team")
 
