@@ -9,7 +9,6 @@ import (
 
 var AlreadyDraftedErr = errors.New("the player you selected was already drafted. pick again")
 
-
 // Store interface contains all methods available for players
 type Store interface {
 	DraftPlayer(id int) (int64, error)
@@ -17,6 +16,8 @@ type Store interface {
 	Player(id int) (*Player, error)
 	Reset() (int64, error)
 	Scout() ([]Player, error)
+	Teams() ([]*Team, error)
+	Team(id int) (*Team, error)
 }
 
 type dbStore struct {
@@ -124,7 +125,6 @@ func (store *dbStore) Reset() (int64, error) {
 	return rows, nil
 }
 
-
 // Scout is a function that returns all players that have not been drafted
 func (store *dbStore) Scout() ([]Player, error) {
 	rows, err := store.db.Query("SELECT * FROM players WHERE drafted = false")
@@ -148,6 +148,51 @@ func (store *dbStore) Scout() ([]Player, error) {
 	}
 
 	return players, nil
+}
+
+// Player is a function that returns player for an id (if player exists)
+// https://golang.org/src/database/sql/example_test.go
+func (store *dbStore) Team(id int) (*Team, error) {
+	team := &Team{}
+
+	err := store.db.QueryRow("SELECT * FROM team WHERE id = $1", id).Scan(&team.ID, &team.Name, &team.Conference, &team.Division, &team.DraftOrder)
+
+	switch {
+	case err == sql.ErrNoRows:
+		fmt.Printf("No team with that ID.")
+		return nil, err
+	case err != nil:
+		fmt.Println(err)
+		return nil, err
+	default:
+		fmt.Printf("Team is %s\n", team)
+		return team, nil
+	}
+}
+
+// Players is a function that returns all players
+func (store *dbStore) Teams() ([]*Team, error) {
+	rows, err := store.db.Query("SELECT * FROM team")
+
+	if err != nil {
+		fmt.Println("Failed to run query", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	teams := []*Team{}
+
+	for rows.Next() {
+		team := &Team{}
+
+		if err := rows.Scan(&team.ID, &team.Name, &team.Conference, &team.Division, &team.DraftOrder); err != nil {
+			log.Fatal(err)
+		}
+
+		teams = append(teams, team)
+	}
+
+	return teams, nil
 }
 
 var store Store

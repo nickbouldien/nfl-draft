@@ -19,20 +19,20 @@ type Player struct {
 	Name     string `json:"name" sql:"full_name"`
 	School   string `json:"school"`
 	Position string `json:"position"`
-	Drafted bool `json:"drafted"`
+	Drafted  bool   `json:"drafted"`
 }
 
 // Team : struct for teams
 type Team struct {
-	ID       int64  `json:"id"`
-	Name     string `json:"name" sql:"full_name"`
-	City   string `json:"city"`
-	Mascot string `json:"mascot"`
-	DraftOrder bool `json:"draftOrder" sql:"draft_order"`
+	ID         int64  `json:"id"`
+	Name       string `json:"name"`
+	Conference string `json:"conference"`
+	Division   string `json:"division"`
+	DraftOrder int64  `json:"draftOrder" sql:"draft_order"`
 }
 
 func (t Team) String() string {
-	return fmt.Sprintf("Team<ID=%d Name=%q City=%q Mascot=%q>", t.ID, t.Name, t.City, t.Mascot)
+	return fmt.Sprintf("Team<ID=%d Name=%q City=%q Mascot=%q>", t.ID, t.Name, t.Conference, t.Division, t.DraftOrder)
 }
 
 func (p Player) String() string {
@@ -90,7 +90,49 @@ func test(w http.ResponseWriter, req *http.Request) {
 
 func teamHandler(w http.ResponseWriter, req *http.Request) {
 	utils.EnableCors(&w)
-	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"team": "success"})
+	_, rest := utils.ShiftPath(req.URL.Path) // to take out "teams" from the path
+	head, _ := utils.ShiftPath(rest)
+
+	var teamID = -1
+
+	switch req.Method {
+	case "GET":
+		if head != "" {
+			id, err := strconv.Atoi(head)
+			if err == nil {
+				teamID = id
+			}
+		}
+		if teamID != -1 {
+			log.Println("returning team with id ", teamID)
+			team, err := store.Team(teamID)
+			if err != nil {
+				msg := "Could not retrieve team with id: " + strconv.Itoa(teamID)
+				utils.RespondWithError(w, http.StatusNotFound, msg)
+				return
+			}
+			utils.RespondWithJSON(w, http.StatusOK, team)
+			return
+		}
+		log.Println("returning all teams")
+		teams, err := store.Teams()
+		if err != nil {
+			msg := "Could not retrieve teams"
+			utils.RespondWithError(w, http.StatusNotFound, msg)
+			return
+		}
+		utils.RespondWithJSON(w, http.StatusOK, teams)
+		return
+	case "POST":
+		// TODO - make route to create new team
+		msg := "Desired method not yet implemented"
+		utils.RespondWithError(w, http.StatusNotImplemented, msg)
+		return
+	default:
+		msg := "Method not allowed"
+		utils.RespondWithError(w, http.StatusMethodNotAllowed, msg)
+		return
+	}
 }
 
 func playerHandler(w http.ResponseWriter, req *http.Request) {
