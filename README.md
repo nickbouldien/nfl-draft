@@ -1,4 +1,4 @@
-# NFL DRAFT README
+# NFL DRAFT
 
 ## Inspiration
 This was inspired by [Key & Peele's](https://en.wikipedia.org/wiki/Key_%26_Peele) "East/West Bowl" comedy sketch(es), though this is the NFL draft (with one round) following the bowl.
@@ -11,7 +11,9 @@ This is just a small thing I did as an excuse to mess around with Go for the fir
 
 ## Routes:
 - `/index`
-- `/players/`
+- `/players`
+    - `players/<id>`
+    - `players/reset`
 - `/test`
 - `/files/`  (use this route to see contents of the /files directory, or go to /files/<file_name><file_extension>)
 
@@ -25,9 +27,9 @@ or `go build` followed by `./nfl_draft`
 ex: `curl --request GET --url http://localhost:8080/players/3`
 
 ## Fetch all players:
-`curl --request GET --url <base_url>/players/`
+`curl --request GET --url <base_url>/players`
 
-ex: `curl --request GET --url http://localhost:8080/players/`
+ex: `curl --request GET --url http://localhost:8080/players`
 
 ## Draft a player:
 url: base url
@@ -56,6 +58,7 @@ ex: `curl --request POST --url http://localhost:8080/players/3`
 ## Resources:
 - ["Go in Practice"](https://www.manning.com/books/go-in-practice) by Matt Butcher and Matt Farina
 - [Go docs](https://golang.org)
+- [Gorilla Mux Router](https://github.com/gorilla/mux)
 - [Simple JSON Rest API in Go (tutorial)](https://www.youtube.com/watch?v=hRR-Zy1H-Yo)
 - Medium article ["Build RESTful API in Go and MongoDB"](https://github.com/mlabouardy/movies-restapi) by Mohamed Labouardy
 - [ENABLING CORS ON A GO WEB SERVER](https://flaviocopes.com/golang-enable-cors/), an article by Flavio Copes

@@ -68,22 +68,21 @@ func main() {
 
 	InitStore(&dbStore{db: db})
 
-	fs := http.StripPrefix("/files", http.FileServer(http.Dir("./files")))
-	http.Handle("/files/", fs)
-
 	r := mux.NewRouter()
+
+	r.PathPrefix("/files/").Handler(http.StripPrefix("/files", http.FileServer(http.Dir("./files"))))
+
 	r.HandleFunc("/", index).Methods("GET")
 	r.HandleFunc("/test", test).Methods("GET")
 
-	//http.HandleFunc("/players/", playerHandler) // TODO: add param to get non-drafted players?? (get rid of /scouting route)
-	r.HandleFunc("/players", playerHandler).Methods("GET", "POST")
-	s1 := r.PathPrefix("/players").Subrouter()
-	s1.HandleFunc("/{id:[0-9]+}", playerDetail).Methods("GET", "POST")
-	s1.HandleFunc("/reset", playerReset).Methods( "POST")
+	r.HandleFunc("/players", playerHandler).Methods("GET", "POST") // TODO: add param to get non-drafted players?? (get rid of /scouting route)
+	players := r.PathPrefix("/players").Subrouter()
+	players.HandleFunc("/{id:[0-9]+}", playerDetail).Methods("GET", "POST")
+	players.HandleFunc("/reset", playerReset).Methods( "POST")
 
 	r.HandleFunc("/teams", teamHandler).Methods("GET", "POST")
-	s2 := r.PathPrefix("/teams").Subrouter()
-	s2.HandleFunc("/{id:[0-9]+}", teamDetail).Methods("GET")
+	teams := r.PathPrefix("/teams").Subrouter()
+	teams.HandleFunc("/{id:[0-9]+}", teamDetail).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
