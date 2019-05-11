@@ -79,6 +79,7 @@ func main() {
 	r.HandleFunc("/players", playerHandler).Methods("GET", "POST")
 	s1 := r.PathPrefix("/players").Subrouter()
 	s1.HandleFunc("/{id:[0-9]+}", playerDetail).Methods("GET", "POST")
+	s1.HandleFunc("/reset", playerReset).Methods( "POST")
 
 	r.HandleFunc("/teams", teamHandler).Methods("GET", "POST")
 	s2 := r.PathPrefix("/teams").Subrouter()
@@ -207,28 +208,20 @@ func playerDetail(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func playerReset (w http.ResponseWriter, _ *http.Request) {
+	utils.EnableCors(&w)
+	num, err := store.Reset()
+	if err != nil {
+		msg := "Could not reset the players to be undrafted"
+		utils.RespondWithError(w, http.StatusInternalServerError, msg)
+		return
+	}
+	utils.RespondWithJSON(w, http.StatusOK, num)
+	return
+}
+
 func playerHandler(w http.ResponseWriter, req *http.Request) {
 	utils.EnableCors(&w)
-	_, rest := utils.ShiftPath(req.URL.Path) // to take out "players" from the path
-
-	head, _ := utils.ShiftPath(rest)
-
-	if head != "" {
-		switch head {
-		case "reset":
-			num, err := store.Reset()
-			if err != nil {
-				msg := "Could not reset the players to be undrafted"
-				utils.RespondWithError(w, http.StatusInternalServerError, msg)
-				return
-			}
-			utils.RespondWithJSON(w, http.StatusOK, num)
-			return
-		default:
-			utils.RespondWithError(w, http.StatusNotFound, "Not found")
-			return
-		}
-	}
 
 	switch req.Method {
 	case "GET":
