@@ -75,10 +75,14 @@ func main() {
 	r.HandleFunc("/", index).Methods("GET")
 	r.HandleFunc("/test", test).Methods("GET")
 
-	http.HandleFunc("/players/", playerHandler) // TODO: add param to get non-drafted players?? (get rid of /scouting route)
+	//http.HandleFunc("/players/", playerHandler) // TODO: add param to get non-drafted players?? (get rid of /scouting route)
+	r.HandleFunc("/players", playerHandler).Methods("GET", "POST")
+	s1 := r.PathPrefix("/players").Subrouter()
+	s1.HandleFunc("/{id:[0-9]+}", playerDetail).Methods("GET", "POST")
+
 	r.HandleFunc("/teams", teamHandler).Methods("GET", "POST")
-	s := r.PathPrefix("/teams").Subrouter()
-	s.HandleFunc("/{id:[0-9]+}", teamDetail).Methods("GET")
+	s2 := r.PathPrefix("/teams").Subrouter()
+	s2.HandleFunc("/{id:[0-9]+}", teamDetail).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
@@ -112,7 +116,7 @@ func teamDetail(w http.ResponseWriter, req *http.Request) {
 	log.Println("returning team with id ", teamID)
 	team, err := store.Team(teamID)
 	if err != nil {
-		msg := "Could not retrieve team with id: " + strconv.Itoa(teamID)
+		msg := "Could not retrieve team with id: " + reqID
 		utils.RespondWithError(w, http.StatusNotFound, msg)
 		return
 	}
@@ -146,19 +150,70 @@ func teamHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func playerDetail(w http.ResponseWriter, req *http.Request) {
+	reqID := mux.Vars(req)["id"]
+
+	var pID = -1
+
+	id, err := strconv.Atoi(reqID)
+	if err == nil {
+		pID = id
+	}
+
+	if pID == -1 {
+		msg := "Could not retrieve team with id: " + reqID
+		utils.RespondWithError(w, http.StatusNotFound, msg)
+		return
+	}
+
+	switch req.Method {
+	case "GET":
+		log.Println("getting player with id: ", pID)
+		p, err := store.Player(id)
+		if err != nil {
+			msg := "Could not retrieve player with id: " + reqID
+			utils.RespondWithError(w, http.StatusNotFound, msg)
+			return
+		}
+		utils.RespondWithJSON(w, http.StatusOK, p)
+		return
+	case "POST":
+		log.Println("trying to draft player:", pID)
+		playerID, err := store.DraftPlayer(id)
+		switch {
+		case err == AlreadyDraftedErr:
+			msg := (AlreadyDraftedErr).Error()
+			log.Printf("Already drafted err. %s", msg)
+			utils.RespondWithError(w, http.StatusNotFound, msg)
+			return
+		case playerID == 0:
+			log.Println("did not find player")
+			msg := fmt.Sprintf("Player with id: %s does not exist", reqID)
+			utils.RespondWithJSON(w, http.StatusNotFound, msg)
+			return
+		case err != nil:
+			msg := "Could not draft player with id: " + reqID
+			utils.RespondWithError(w, http.StatusNotFound, msg)
+			return
+		default:
+			msg := "Congrats, you have successfully drafted player: " + reqID
+			utils.RespondWithJSON(w, http.StatusOK, msg)
+			return
+		}
+	default:
+		msg := "Method not allowed"
+		utils.RespondWithError(w, http.StatusMethodNotAllowed, msg)
+		return
+	}
+}
+
 func playerHandler(w http.ResponseWriter, req *http.Request) {
 	utils.EnableCors(&w)
 	_, rest := utils.ShiftPath(req.URL.Path) // to take out "players" from the path
 
 	head, _ := utils.ShiftPath(rest)
 
-	var pID string
 	if head != "" {
-		id, err := strconv.Atoi(head)
-		if err == nil {
-			pID = strconv.Itoa(id)
-			head = "id" // hacky solution ...
-		}
 		switch head {
 		case "reset":
 			num, err := store.Reset()
@@ -169,46 +224,6 @@ func playerHandler(w http.ResponseWriter, req *http.Request) {
 			}
 			utils.RespondWithJSON(w, http.StatusOK, num)
 			return
-		case "id":
-			switch req.Method {
-			case "GET":
-				log.Println("getting player with id: ", pID)
-				p, err := store.Player(id)
-				if err != nil {
-					msg := "Could not retrieve player with id: " + pID
-					utils.RespondWithError(w, http.StatusNotFound, msg)
-					return
-				}
-				utils.RespondWithJSON(w, http.StatusOK, p)
-				return
-			case "POST":
-				log.Println("trying to draft player:", pID)
-				playerID, err := store.DraftPlayer(id)
-				switch {
-				case err == AlreadyDraftedErr:
-					msg := (AlreadyDraftedErr).Error()
-					log.Printf("Already drafted err. %s", msg)
-					utils.RespondWithError(w, http.StatusNotFound, msg)
-					return
-				case playerID == 0:
-					log.Println("did not find player")
-					msg := "Player with id: " + pID + " does not exist."
-					utils.RespondWithJSON(w, http.StatusNotFound, msg)
-					return
-				case err != nil:
-					msg := "Could not draft player with id: " + pID
-					utils.RespondWithError(w, http.StatusNotFound, msg)
-					return
-				default:
-					msg := "Congrats, you have successfully drafted player: " + pID
-					utils.RespondWithJSON(w, http.StatusOK, msg)
-					return
-				}
-			default:
-				msg := "Method not allowed"
-				utils.RespondWithError(w, http.StatusMethodNotAllowed, msg)
-				return
-			}
 		default:
 			utils.RespondWithError(w, http.StatusNotFound, "Not found")
 			return
