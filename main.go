@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
@@ -32,7 +33,7 @@ type Team struct {
 }
 
 func (t Team) String() string {
-	return fmt.Sprintf("Team<ID=%d Name=%q City=%q Mascot=%q>", t.ID, t.Name, t.Conference, t.Division, t.DraftOrder)
+	return fmt.Sprintf("Team<ID=%d Name=%s Conference=%s Division=%s DraftOrder=%d>", t.ID, t.Name, t.Conference, t.Division, t.DraftOrder)
 }
 
 func (p Player) String() string {
@@ -70,50 +71,60 @@ func main() {
 	fs := http.StripPrefix("/files", http.FileServer(http.Dir("./files")))
 	http.Handle("/files/", fs)
 
-	http.HandleFunc("/players/", playerHandler) // TODO: add param to get non-drafted players?? (get rid of /scouting route)
-	http.HandleFunc("/teams/", teamHandler)
-	http.HandleFunc("/", index)
-	http.HandleFunc("/test", test)
+	r := mux.NewRouter()
+	r.HandleFunc("/", index).Methods("GET")
+	r.HandleFunc("/test", test).Methods("GET")
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	http.HandleFunc("/players/", playerHandler) // TODO: add param to get non-drafted players?? (get rid of /scouting route)
+	r.HandleFunc("/teams", teamHandler).Methods("GET", "POST")
+	s := r.PathPrefix("/teams").Subrouter()
+	s.HandleFunc("/{id:[0-9]+}", teamDetail).Methods("GET")
+
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
 
-func index(w http.ResponseWriter, req *http.Request) {
+func index(w http.ResponseWriter, _ *http.Request) {
 	utils.EnableCors(&w)
 	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"index": "success"})
 }
 
-func test(w http.ResponseWriter, req *http.Request) {
+func test(w http.ResponseWriter, _ *http.Request) {
 	utils.EnableCors(&w)
 	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"test": "success"})
 }
 
-func teamHandler(w http.ResponseWriter, req *http.Request) {
-	utils.EnableCors(&w)
-	_, rest := utils.ShiftPath(req.URL.Path) // to take out "teams" from the path
-	head, _ := utils.ShiftPath(rest)
+func teamDetail(w http.ResponseWriter, req *http.Request) {
+	reqID := mux.Vars(req)["id"]
 
 	var teamID = -1
 
+	id, err := strconv.Atoi(reqID)
+	if err == nil {
+		teamID = id
+	}
+
+	if teamID == -1 {
+		msg := "Could not retrieve team with id: " + reqID
+		utils.RespondWithError(w, http.StatusNotFound, msg)
+		return
+	}
+
+	log.Println("returning team with id ", teamID)
+	team, err := store.Team(teamID)
+	if err != nil {
+		msg := "Could not retrieve team with id: " + strconv.Itoa(teamID)
+		utils.RespondWithError(w, http.StatusNotFound, msg)
+		return
+	}
+	utils.RespondWithJSON(w, http.StatusOK, team)
+	return
+}
+
+func teamHandler(w http.ResponseWriter, req *http.Request) {
+	utils.EnableCors(&w)
+
 	switch req.Method {
 	case "GET":
-		if head != "" {
-			id, err := strconv.Atoi(head)
-			if err == nil {
-				teamID = id
-			}
-		}
-		if teamID != -1 {
-			log.Println("returning team with id ", teamID)
-			team, err := store.Team(teamID)
-			if err != nil {
-				msg := "Could not retrieve team with id: " + strconv.Itoa(teamID)
-				utils.RespondWithError(w, http.StatusNotFound, msg)
-				return
-			}
-			utils.RespondWithJSON(w, http.StatusOK, team)
-			return
-		}
 		log.Println("returning all teams")
 		teams, err := store.Teams()
 		if err != nil {
